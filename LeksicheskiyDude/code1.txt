@@ -1,0 +1,48 @@
+#include <iostream>;
+#include <iomanip>;
+#include <cmath>;
+
+using namespace std;
+
+class Class{
+   public:
+      int id;
+
+     Class(){}
+     int class_met(){ return 5; }
+   protected:
+     ~Class(){}
+
+}
+
+bool f1(double arg1, double arg2){
+    if(1){
+    return arg1 - arg2 == 3.14;
+    }
+    return false;
+}
+
+std::cout<< "meou";
+int main(){
+    int abc = 0;
+    int barr[5][1]{1,2,3,4,5};
+    char a = barr[2];
+    int k = 0;
+    if(f1(1.2, 01.2)){cout<<true;}
+    abc = abc++;
+    long int a5 = 5e-5, b;
+    double **dd = &b;
+    char h = '\g';
+    Class _cl = Class();
+    int testvar = _cl.class_met();
+    _cl.id = 498;
+    b = a * 0b1801.01;
+    const char xx = "hehe\"he";
+    if ( 'a' < 4): continue;
+    int a = strlen(xx);
+    a <<<= 2+ b;
+    long jj = 4557;
+    for (int i = 1; i<2; i++){}
+
+    return;
+}
