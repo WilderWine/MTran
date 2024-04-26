@@ -21,6 +21,7 @@ def classify(token_stream):
     user_funcs = []
     methods = []
     variables = []
+    declaring_array = False
 
 
     area_stack = ['global']
@@ -59,7 +60,9 @@ def classify(token_stream):
             res, ss = number_is_correct(token[0])
             if not res:
                 errors[len(errors)] = f"Error: Wrong number format: {token[0]}"
+                exit()
             tt.add_token(Token(token[0], f'number, {ss}', token[2]))
+
             previous_token = token[0]
             previous_type = token[1]
         elif token[1] == 'operator':
@@ -137,7 +140,17 @@ def classify(token_stream):
                         tt.add_token(Token(f"@other, {previous_token}@", 'area', token[2]))
                         tt.add_token(Token(token[0], "operator, parenthesis", token[2]))
                     previous_area = current_area
-                elif token[0] in ['[', ']']:
+                elif token[0] == '[':
+                    sqsctype: str
+                    if declaring_array:
+                        sqsctype = "operator, parenthesis, array-declare"
+                    else:
+                        sqsctype = "operator, parenthesis, indexing"
+                    tt.add_token(Token(token[0], sqsctype, token[2]))
+                elif token[0] == ']':
+
+                    if not (declaring_array and i < len(token_stream)- 1 and token_stream[i+1][0] == '['):
+                        declaring_array = False
                     tt.add_token(Token(token[0], "operator, parenthesis", token[2]))
                 if(len(area_stack) > 0):
                     current_area = area_stack[len(area_stack) -1]
@@ -275,6 +288,7 @@ def classify(token_stream):
                     if current_datasubtype != "":
                         vartype = current_datasubtype
                     tt.add_token(Token(token[0], f"array, {vartype}, declare", token[2]))
+                    declaring_array = True
                 else:
                     ind, tock = tt.get_token_by_name(token[0])
                     vartype = 'array, unknown'

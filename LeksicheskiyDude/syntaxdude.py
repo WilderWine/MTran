@@ -22,6 +22,7 @@ class Node:
         self.array_in = array_in
         self.parent = parent
         self.children = children if children is not None else []
+        self.marked = False
 
     def add_child(self, node):
         node.parent = self
@@ -51,33 +52,33 @@ class Node:
 
 # node specifications
 class NodeDirective(Node):
-    def __init__(self, name, node_type):
-        super().__init__(name, node_type)
+    def __init__(self, name, ntype):
+        super().__init__(name, ntype)
 
 
 class NodeStatement(Node):
-    def __init__(self, name, node_type):
-        super().__init__(name, node_type)
+    def __init__(self, name, ntype):
+        super().__init__(name, ntype)
 
 
 class NodeClass(Node):
-    def __init__(self, name, node_type):
-        super().__init__(name, node_type)
+    def __init__(self, name, ntype):
+        super().__init__(name, ntype)
 
 
 class NodeStructure(Node):
-    def __init__(self, name, node_type):
-        super().__init__(name, node_type)
+    def __init__(self, name, ntype):
+        super().__init__(name, ntype)
 
 
 class NodeUnion(Node):
-    def __init__(self, name, node_type):
-        super().__init__(name, node_type)
+    def __init__(self, name, ntype):
+        super().__init__(name, ntype)
 
 
 class NodeEnum(Node):
-    def __init__(self, name, node_type):
-        super().__init__(name, node_type)
+    def __init__(self, name, ntype):
+        super().__init__(name, ntype)
 
 
 class NodeArray(Node):
@@ -116,38 +117,38 @@ class VariableNode(Node):
 
 
 class NodeCompare(Node):
-    def __init__(self, name, node_type):
-        super().__init__(name, node_type)
+    def __init__(self, name, ntype):
+        super().__init__(name, ntype)
 
 
 class NodeAssign(Node):
-    def __init__(self, name, node_type):
-        super().__init__(name, node_type)
+    def __init__(self, name, ntype):
+        super().__init__(name, ntype)
 
 
 class NodeValue(Node):
-    def __init__(self, name, node_type):
-        super().__init__(name, node_type)
+    def __init__(self, name, ntype):
+        super().__init__(name, ntype)
 
 
 class NodeFor(Node):
-    def __init__(self, name, node_type):
-        super().__init__(name, node_type)
+    def __init__(self, name, ntype):
+        super().__init__(name, ntype)
 
 
 class NodeWhile(Node):
-    def __init__(self, name, node_type):
-        super().__init__(name, node_type)
+    def __init__(self, name, ntype):
+        super().__init__(name, ntype)
 
 
 class NodeIf(Node):
-    def __init__(self, name, node_type):
-        super().__init__(name, node_type)
+    def __init__(self, name, ntype):
+        super().__init__(name, ntype)
 
 
 class NodeElif(Node):
-    def __init__(self, name, node_type):
-        super().__init__(name, node_type)
+    def __init__(self, name, ntype):
+        super().__init__(name, ntype)
 
 
 # epic lab requires epic names
@@ -173,6 +174,7 @@ def tree_profound_rooting(tokens):
     std_option = False
     must_count_angles = False
     scobe_check = True
+    static_declaration = False
 
     # for areas like other
     last_block_reason = ""
@@ -192,7 +194,7 @@ def tree_profound_rooting(tokens):
     # token[2] - line in code text
     for i, token in enumerate(tokens):
 
-        '''if i > 0 and previous_token == 'namespace' and token[0] != 'std':
+        ''' if (i > 0 and previous_token == 'namespace' and token[0] != 'std':
             if token[0] not in namespaces: 
                 namespaces.append(token[0])
             elif nodes_stack[-1].ntype !='''
@@ -212,12 +214,24 @@ def tree_profound_rooting(tokens):
                     exit()
         if token[1] == 'datadype':
             if previous_token not in ['(', ';', '{', ':', ',', 'const', '', 'volatile', 'extern', 'static'] and not previous_token.startswith('@') :
-                print(f"ERROR: Unexpected declaration, line {token[2]}")
-                exit()
+                if not (i < len(tokens) -1 and token[0] in namespaces and tokens[i+1][0] == '::'):
+                    print(f"ERROR: Unexpected declaration, line {token[2]}")
+                    exit()
+            if token[0] in namespaces:
+                if i < len(tokens) - 1 and tokens[i + 1][0] == '::':
+                    node_class = NodeClass(token[0], 'user-namespace')
+                    current_node.add_child(node_class)
+                    node_class.parent = current_node
+                if i < len(tokens) - 1 and tokens[i + 1][0] == '(':
+                    node_constructor= Node(token[0], f"constructor-{token[0]}-call")
+                    current_node.add_child(node_constructor)
+                    nodes_stack.append(current_node)
+                    node_constructor.parent = current_node
+                    current_node = node_constructor
 
-       # if token[1].startswith('variable') or token[1].startswith('array') and previous_type.startswith('variable') or previous_type.startswith('array'):
-       #     print(f"ERROR: incorrect use of variables: {token[0]}, {previous_token}, line {token[2]}")
-       #     exit()
+        if (token[1].startswith('variable') or token[1].startswith('array')) and (previous_type.startswith('variable') or previous_type.startswith('array')):
+            print(f"ERROR: incorrect use of variables: {previous_token}, {token[0]}, line {token[2]}")
+            exit()
 
         # dealing with areas inside tokens
         if token[1] == 'area':
@@ -276,48 +290,56 @@ def tree_profound_rooting(tokens):
                     current_area = areas_stack[-1]
         elif token[0] in directives:
             node_directive = NodeDirective(token[0], 'directive')
+            node_directive.parent = current_node
             current_node.add_child(node_directive)
             nodes_stack.append(current_node)
             current_node = node_directive
         elif token[1] == 'library':
-            library_node = Node(token[0], 'library')
+            library_node = Node(token[0], 'library', parent=current_node)
             if token[0] == 'iostream':
                 namespaces.append('std')
             current_node.add_child(library_node)
         elif token[1] == 'class-name':
+           # if not (i < len (tokens) -1 and tokens[i+1][0] == '::'):
             namespaces.append(token[0])
             classes.append(token[0])
             node_class = NodeClass(token[0], 'class')
             current_node.add_child(node_class)
+            node_class.parent=current_node
             nodes_stack.append(current_node)
             current_node = node_class
             current_class = token[0]
         elif token[1] == 'structure-name':
             namespaces.append(token[0])
             node_struct = NodeClass(token[0], 'structure')
+            node_struct.parent = current_node
             current_node.add_child(node_struct)
             nodes_stack.append(current_node)
             current_node = node_struct
         elif token[1] == 'union-name':
             node_union = NodeUnion(token[0], 'union')
+            node_union.parent = current_node
             current_node.add_child(node_union)
             nodes_stack.append(current_node)
             current_node = node_union
         elif token[1] == 'enum-name':
             node_enum = NodeEnum(token[0], 'enum')
+            node_enum.parent = current_node
             current_node.add_child(node_enum)
             nodes_stack.append(current_node)
             current_node = node_enum
-
 
         # functions, methods, etc.
         # if area
         elif token[1].startswith('function'):
             node_func = None
             func_origin = [fd.strip() for fd in token[1].split(',')][1]
+            func_ret_type = 'any'
+            if func_origin == 'user':
+                func_ret_type = [fd.strip() for fd in token[1].split(',')][2]
             if current_area == 'global':
                 # function declaration
-                node_func = Node(token[0], f"function-{func_origin}-declare")
+                node_func = Node(token[0], f"function-{func_origin}-declare", datatype=func_ret_type)
                 if func_origin != 'user' and token[0] != 'main':
                     # standart function redeclaration
                     print(f"ERROR: Standart function {token[0]} redeclaration, line {token[2]}")
@@ -325,10 +347,12 @@ def tree_profound_rooting(tokens):
             else:
                 node_func = Node(token[0], f"function-{func_origin}-call")
             current_node.add_child(node_func)
+            node_func.parent = current_node
             nodes_stack.append(current_node)
             current_node = node_func
         elif token[1].startswith('method'):
             node_method=None
+
             if current_area == 'class':
                 method_origin = [fd.strip() for fd in token[1].split(',')][1]
                 if method_origin == current_class and token[0] not in current_class_methods:
@@ -342,6 +366,7 @@ def tree_profound_rooting(tokens):
                 if previous_token not in ['.', '->']:
                     print(f"ERROR: Inappropriate call of class method, line {token[2]}")
                 node_method = Node(token[0], f"method-{method_origin}-call")
+            node_method.parent = current_node
             current_node.add_child(node_method)
             nodes_stack.append(current_node)
             current_node = node_method
@@ -353,6 +378,7 @@ def tree_profound_rooting(tokens):
                 node_constructor = Node(token[0], 'constructor-call')
             current_node.add_child(node_constructor)
             nodes_stack.append(current_node)
+            node_constructor.parent = current_node
             current_node = node_constructor
         elif token[1] == 'destructor':
             if current_area == 'class' and token[0] == current_class:
@@ -360,6 +386,7 @@ def tree_profound_rooting(tokens):
             else:
                 node_destructor = Node(token[0], 'destructor-call')
             current_node.add_child(node_destructor)
+            node_destructor.parent = current_node
             nodes_stack.append(current_node)
             current_node = node_destructor
                 # call
@@ -368,35 +395,43 @@ def tree_profound_rooting(tokens):
         elif token[0] == 'if':
             node_if = NodeIf(token[0], 'if-block')
             current_node.add_child(node_if)
+            node_if.parent = current_node
             #nodes_stack.append(current_node)
             #current_node = node_if
         elif token[0] == 'else':
             node_else = NodeElif(token[0], 'if-else-block')
             current_node.add_child(node_else)
+            node_else.parent = current_node
             #nodes_stack.append(current_node)
             #current_node = node_else
         elif token[0] == 'for':
             node_for = NodeFor(token[0], 'for-block')
             current_node.add_child(node_for)
+            node_for.parent = current_node
             #nodes_stack.append(current_node)
             #current_node = node_for
         elif token[0] == 'while':
             node_while = NodeWhile(token[0], 'while-block')
             current_node.add_child(node_while)
+            node_while.parent = current_node
             #nodes_stack.append(current_node)
             #current_node = node_while
         elif token[0] == "new":
             node_new = Node(token[0], "operator-new")
             current_node.add_child(node_new)
+            node_new.parent = current_node
         elif token[0] == "delete":
             node_delete = Node(token[0], "operator-delete")
             current_node.add_child(node_delete)
+            node_delete.parent = current_node
         elif token[0] == "break":
             node_break = Node(token[0], "operator-break")
             current_node.add_child(node_break)
+            node_break.parent = current_node
         elif token[0] == "continue":
             node_continue = Node(token[0], "operator-continue")
             current_node.add_child(node_continue)
+            node_continue.parent = current_node
         elif token[0] == 'std':
             node_std = Node(token[0], 'namespace')
             current_node.add_child(node_std)
@@ -408,6 +443,7 @@ def tree_profound_rooting(tokens):
             if 'std' not in namespaces:
                 print(f"ERROR: iostream library is not included -> can not use std")
                 exit()
+            node_std.parent = current_node
 
             #nodes_stack.append(current_node)
             #current_node = node_std
@@ -416,6 +452,7 @@ def tree_profound_rooting(tokens):
             node_return = Node(token[0], 'return-statement')
             current_node.add_child(node_return)
             nodes_stack.append(current_node)
+            node_return.parent = current_node
             current_node = node_return
             need_return = True
 
@@ -426,11 +463,13 @@ def tree_profound_rooting(tokens):
                 node_var = Node(token[0], 'declare', var_type)
                 current_node.add_child(node_var)
                 nodes_stack.append(current_node)
+                node_var.parent = current_node
                 current_node = node_var
                 declaring = True
             elif var_context == 'use':
                 node_var = Node(token[0], 'variable')
                 current_node.add_child(node_var)
+                node_var.parent = current_node
 
         elif token[0] == '::':
             if previous_token not in namespaces:
@@ -438,20 +477,24 @@ def tree_profound_rooting(tokens):
                 exit()
             node_colon = Node(token[0], 'operator-colon')
             current_node.add_child(node_colon)
+            node_colon.parent = current_node
+
             #if std_option:
             #    nodes_stack.append(current_node)
             #    current_node = node_colon
 
 
         # const literals
-        elif token[1].startswith('number') or token[1] == 'string' or token[1] == 'symbol':
-            lit_type = 'string'
+        elif token[1].startswith('number') or token[1] == 'string' or token[1] == 'char':
             if token[1].startswith('number'):
                 lit_type = [tok.strip() for tok in token[1].split(',')][1]
-            elif token[1] == 'symbol':
-                lit_type = 'symbol'
+            elif token[1] == 'char':
+                lit_type = 'char'
+            elif token[1] == 'string':
+                lit_type = 'string'
             node_literal = NodeValue(token[0], lit_type)
             current_node.add_child(node_literal)
+            node_literal.parent = current_node
 
         # access areas
         elif token[0] in ['public', 'private', 'protected']:
@@ -461,6 +504,7 @@ def tree_profound_rooting(tokens):
                 pass
             nodes_stack.append(current_node)
             current_node.add_child(node_access)
+            node_access.parent = current_node
             current_node = node_access
 
         elif token[0] == ',':
@@ -471,13 +515,18 @@ def tree_profound_rooting(tokens):
                 current_node = nodes_stack.pop()
                 assigning = False
             current_node.add_child(node_comma)
+            node_comma.parent = current_node
         elif token[0] == '.':
             node_dot = Node(token[0], 'dot')
             current_node.add_child(node_dot)
+            node_dot.parent = current_node
         elif token[0] == '=':
+            if i < len(tokens)-1 and tokens[i+1][0] == 'new' and current_node.ntype == 'declare' and current_node.datatype in namespaces:
+                current_node.datatype += '*'
             node_assign = Node(token[0], 'assign')
             current_node.add_child(node_assign)
             nodes_stack.append(current_node)
+            node_assign.parent = current_node
             current_node = node_assign
             assigning = True
 
@@ -492,6 +541,7 @@ def tree_profound_rooting(tokens):
                     node_params = Node('', f"other-area")
                 current_node.add_child(node_params)
                 nodes_stack.append(current_node)
+                node_params.parent = current_node
                 current_node = node_params
             elif token[0] == ')':
                 # call of a function/method
@@ -517,6 +567,7 @@ def tree_profound_rooting(tokens):
                     node_body = Node('', 'inline')
                 current_node.add_child(node_body)
                 nodes_stack.append(current_node)
+                node_body.parent = current_node
                 current_node = node_body
             elif token[0] == '}':
                 if current_area in ['class', 'struct', 'enum', 'union']:
@@ -528,15 +579,19 @@ def tree_profound_rooting(tokens):
                 else:
                     current_node = nodes_stack.pop()
             elif token[0] == '[' and previous_token != ']':
-                var_context = [tok.strip() for tok in previous_type.split(',')][2]
+                if len([tok.strip() for tok in previous_type.split(',')]) > 2:
+                    var_context = [tok.strip() for tok in previous_type.split(',')][2]
+                else:
+                    var_context = 'indexing'
                 if var_context == 'declare':
                     # size of array
                     node_arr = Node('', 'array-size')
                 else:
                     # indexing
-                    node_arr = Node('', 'array-indexing')
+                    node_arr = Node('', 'indexing')
                 current_node.add_child(node_arr)
                 nodes_stack.append(current_node)
+                node_arr.parent = current_node
                 current_node = node_arr
             elif token[0] == ']'and i != len(tokens[i+1])-1 and tokens[i+1][0] != '[':
                 current_node = nodes_stack.pop()
@@ -564,6 +619,7 @@ def tree_profound_rooting(tokens):
                     op_node = Node(token[0], 'operator')
             if op_node is not None:
                 current_node.add_child(op_node)
+                op_node.parent = current_node
             if token[0] == '>' and current_node.ntype == 'directive':
                 current_node = nodes_stack.pop()
             if token[0] == '<' and must_count_angles:
@@ -579,7 +635,9 @@ def tree_profound_rooting(tokens):
         # ;
         elif token[1] == 'eoc':
             declaration_expected = True
-            current_node.add_child(Node(';', 'eoc'))
+            node_eoc = Node(';', 'eoc')
+            current_node.add_child(node_eoc)
+            node_eoc.parent = current_node
             if len(nodes_stack) > 1:
                 pass#current_node = nodes_stack.pop()
             if need_return:
@@ -594,9 +652,13 @@ def tree_profound_rooting(tokens):
             if including:
                 current_node = nodes_stack.pop()
                 including = False
+            if static_declaration:
+                current_node = nodes_stack.pop()
+                static_declaration = False
         elif token[0] in stds and std_option:
             node_std = Node(token[0], std_option)
             current_node.add_child(node_std)
+            node_std.parent = current_node
             if i < len(tokens)-1 and tokens[i+1][0] != '<':
                 current_node = nodes_stack.pop()
                 std_option=False
@@ -606,6 +668,7 @@ def tree_profound_rooting(tokens):
         elif token[0] in ['cout', 'endl', 'cerr', 'cin']:
             node_io = Node(token[0], 'std-option')
             current_node.add_child(node_io)
+            node_io.parent = current_node
 
         elif token[1].startswith('array'):
             var_type = [tok.strip() for tok in token[1].split(',')][1]
@@ -615,33 +678,38 @@ def tree_profound_rooting(tokens):
             elif var_context == 'use':
                 node_var = Node(token[0], 'array')
             current_node.add_child(node_var)
+            node_var.parent = current_node
             # nodes_stack.append(current_node)
             # current_node = node_var
         elif token[0] in keywords:
             if token[0] == 'using':
                 node_key = Node(token[0], 'namespace-include')
                 current_node.add_child(node_key)
+                node_key.parent = current_node
                 including = True
                 nodes_stack.append(current_node)
                 current_node = node_key
+            elif token[0] == 'static':
+                node_static = Node(token[0], 'static')
+                current_node.add_child(node_static)
+                node_static.parent = current_node
+                nodes_stack.append(current_node)
+                current_node = node_static
+                static_declaration = True
             else:
                 node_key = Node(token[0], 'keyword')
                 current_node.add_child(node_key)
+                node_key.parent = current_node
 
 
         previous_token = token[0]
         previous_type = token[1]
     if len(scobes_stack) > 0:
         print(f"ERROR: clobes {scobes_stack} were never closed!" )
-    print(print(root.display()))
-    for tok in tokens:
-        print(tok)
+    #print(print(root.display()))
+    #for tok in tokens:
+    #   print(tok)
+
+    return root, namespaces
 
 
-files = ['code1.txt']
-file = open(files[0], 'r')
-the_text = file.read()
-tokens = tokenize(the_text)
-table = classify(tokens)
-itog_tokens = table.get_values()
-tree_profound_rooting(itog_tokens)
